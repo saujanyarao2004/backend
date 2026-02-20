@@ -55,3 +55,39 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
+    
+    # 🔐 Role-based access control
+def require_role(role: str):
+    def role_checker(current_user: User = Depends(get_current_user)):
+        if current_user.role != role:
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied: insufficient permissions"
+            )
+        return current_user
+    return role_checker
+
+from models import Consent
+
+def check_consent(patient_id: int, current_user: User, db: Session):
+
+    # Only doctors require consent check
+    if current_user.role != "doctor":
+        raise HTTPException(
+            status_code=403,
+            detail="Only doctors can access patient records"
+        )
+
+    consent = db.query(Consent).filter(
+        Consent.patient_id == patient_id,
+        Consent.doctor_id == current_user.user_id,
+        Consent.status == "ACTIVE"
+    ).first()
+
+    if not consent:
+        raise HTTPException(
+            status_code=403,
+            detail="Consent required to access this patient's records"
+        )
+
+    return True

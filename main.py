@@ -1,16 +1,21 @@
-from security import hash_password, create_access_token
-
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from security import require_role
 
 from database import engine, Base, SessionLocal
 import models
 from models import User
-from security import hash_password
+from schemas import RegisterRequest
+from security import hash_password, create_access_token, get_current_user
+
 
 app = FastAPI()
 
 Base.metadata.create_all(bind=engine)
+
+
+# ------------------ DB Dependency ------------------
 
 def get_db():
     db = SessionLocal()
@@ -19,29 +24,31 @@ def get_db():
     finally:
         db.close()
 
+
+# ------------------ Root ------------------
+
 @app.get("/")
 def root():
     return {"message": "Backend is running successfully 🚀"}
 
-from schemas import RegisterRequest
+
+# ------------------ Register ------------------
 
 @app.post("/register")
 def register(data: RegisterRequest, db: Session = Depends(get_db)):
-    try:
-        user = User(
-            email=data.email,
-            password_hash=data.password,   # temporarily no hashing
-            role="patient"  # hardcoding for now
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        return {"message": "User registered successfully"}
-    except Exception as e:
-        return {"error": str(e)}
+    user = User(
+        email=data.email,
+        password_hash=data.password,   # hashing can be re-enabled later
+        role="patient"
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
 
-from fastapi.security import OAuth2PasswordRequestForm
-from fastapi import HTTPException
+    return {"message": "User registered successfully"}
+
+
+# ------------------ Login ------------------
 
 @app.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -60,9 +67,19 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 
     return {"access_token": access_token, "token_type": "bearer"}
 
-from security import oauth2_scheme, verify_token
+
+# ------------------ Protected Profile ------------------
 
 @app.get("/profile")
-def get_profile(token: str = Depends(oauth2_scheme)):
-    email = verify_token(token)
-    return {"message": f"Welcome {email}, this is your protected profile"}
+def get_profile(current_user: User = Depends(get_current_user)):
+    return {
+        "email": current_user.email,
+        "role": current_user.role
+    }
+
+@app.get("/admin/users")
+def get_all_users(
+    current_user: User = Depends(require_role("admin")),
+    db: Session = Depends(get_db)
+):
+    return db.query(User).all()
