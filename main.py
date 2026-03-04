@@ -1,14 +1,12 @@
-from fastapi import FastAPI, Depends, HTTPException
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
-from security import require_role
 
 from database import engine, Base, SessionLocal
 import models
 from models import User
 from schemas import RegisterRequest
-from security import hash_password, create_access_token, get_current_user
-
+from security import get_current_user, require_role
+from models import User, Patient, Doctor
 
 app = FastAPI()
 
@@ -32,54 +30,102 @@ def root():
     return {"message": "Backend is running successfully 🚀"}
 
 
-# ------------------ Register ------------------
+# ------------------ Register (Optional - For local DB user creation) ------------------
+
+from fastapi import HTTPException
 
 @app.post("/register")
 def register(data: RegisterRequest, db: Session = Depends(get_db)):
+
+    # 🔒 Check if user already exists
+    existing_user = db.query(User).filter(User.email == data.email).first()
+
+    if existing_user:
+        raise HTTPException(status_code=400, detail="User already exists")
+
+    # Create user
     user = User(
         email=data.email,
-        password_hash=data.password,   # hashing can be re-enabled later
-        role="patient"
+        password_hash=data.password,
+        role=data.role
     )
+
     db.add(user)
     db.commit()
     db.refresh(user)
 
+    # Automatically create profile based on role
+    if user.role == "patient":
+        patient = Patient(user_id=user.user_id)
+        db.add(patient)
+
+    elif user.role == "doctor":
+        doctor = Doctor(user_id=user.user_id)
+        db.add(doctor)
+
+    db.commit()
+
     return {"message": "User registered successfully"}
-
-
-# ------------------ Login ------------------
-
-@app.post("/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-
-    user = db.query(User).filter(User.email == form_data.username).first()
-
-    if not user:
-        raise HTTPException(status_code=400, detail="Invalid email")
-
-    if user.password_hash != form_data.password:
-        raise HTTPException(status_code=400, detail="Invalid password")
-
-    access_token = create_access_token(
-        data={"sub": user.email}
-    )
-
-    return {"access_token": access_token, "token_type": "bearer"}
-
 
 # ------------------ Protected Profile ------------------
 
+from security import log_action
+
 @app.get("/profile")
-def get_profile(current_user: User = Depends(get_current_user)):
+def get_profile(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    log_action(
+        user_id=current_user.user_id,
+        action="VIEW",
+        entity_type="PROFILE",
+        entity_id=current_user.user_id,
+        db=db
+    )
+
     return {
         "email": current_user.email,
         "role": current_user.role
     }
+
+
+# ------------------ Admin Only Route ------------------
 
 @app.get("/admin/users")
 def get_all_users(
     current_user: User = Depends(require_role("admin")),
     db: Session = Depends(get_db)
 ):
+
+    log_action(
+        user_id=current_user.user_id,
+        action="VIEW",
+        entity_type="USER_LIST",
+        entity_id=0,
+        db=db
+    )
+
     return db.query(User).all()
+
+from models import AuditLog
+
+@app.get("/admin/audit-logs")
+def get_audit_logs(
+    current_user: User = Depends(require_role("admin")),
+    db: Session = Depends(get_db)
+):
+    return db.query(AuditLog).all()
+
+
+# ------------------ consent ------------------
+from security import require_doctor_consent
+
+@app.get("/patients/{patient_id}/records")
+def get_patient_records(
+    patient_id: int,
+    current_user: User = Depends(require_doctor_consent())
+):
+    return {
+        "message": f"Doctor {current_user.email} can access patient {patient_id} records"
+    }
