@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Boolean, TIMESTAMP, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from database import Base
+from sqlalchemy import Float
 
 
 # ==========================================================
@@ -137,3 +138,95 @@ class MedicalFile(Base):
 
     # relationship
     record = relationship("MedicalRecord", back_populates="files")    
+
+    # ==========================================================
+# APPOINTMENTS TABLE
+# ==========================================================
+class Appointment(Base):
+    __tablename__ = "appointments"
+
+    appointment_id = Column(Integer, primary_key=True, index=True)
+
+    patient_id = Column(Integer, ForeignKey("patients.patient_id"), nullable=False)
+    doctor_id = Column(Integer, ForeignKey("doctors.doctor_id"), nullable=False)
+
+    appointment_date = Column(TIMESTAMP, nullable=False)
+
+    status = Column(String(20), default="UPCOMING")
+    # UPCOMING | COMPLETED | CANCELLED
+
+    reason = Column(String(255))
+
+    created_at = Column(TIMESTAMP, server_default=func.now())
+
+    # Optional ORM relationships
+    patient = relationship("Patient")
+    doctor = relationship("Doctor")
+
+# ==========================================================
+# VITALS TABLE
+# ==========================================================
+class Vital(Base):
+    __tablename__ = "vitals"
+
+    vital_id = Column(Integer, primary_key=True, index=True)
+
+    patient_id = Column(Integer, ForeignKey("patients.patient_id"), nullable=False)
+
+    weight = Column(Float)
+
+    blood_pressure_systolic = Column(Integer)
+    blood_pressure_diastolic = Column(Integer)
+
+    blood_sugar = Column(Integer)
+
+    recorded_at = Column(TIMESTAMP, server_default=func.now())
+
+    patient = relationship("Patient")    
+
+# ==========================================================
+# REMINDERS TABLE
+# ==========================================================
+class Reminder(Base):
+    __tablename__ = "reminders"
+
+    reminder_id = Column(Integer, primary_key=True, index=True)
+
+    patient_id = Column(Integer, ForeignKey("patients.patient_id"), nullable=False)
+
+    title = Column(String(100), nullable=False)
+    description = Column(String)
+
+    reminder_time = Column(TIMESTAMP, nullable=False)
+
+    status = Column(String(20), default="PENDING")
+
+    created_at = Column(TIMESTAMP, server_default=func.now())
+
+    patient = relationship("Patient")
+
+# ==========================================================
+# HEALTH PROFILE TABLE
+# ==========================================================
+class HealthProfile(Base):
+    __tablename__ = "health_profiles"
+
+    profile_id = Column(Integer, primary_key=True, index=True)
+
+    patient_id = Column(Integer, ForeignKey("patients.patient_id"), nullable=False)
+
+    blood_group = Column(String(5))
+
+    allergies = Column(String)
+
+    has_disability = Column(Boolean, default=False)
+    disability_details = Column(String)
+
+    existing_diseases = Column(String)
+
+    medical_history = Column(String)
+
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, server_default=func.now())
+
+    patient = relationship("Patient")

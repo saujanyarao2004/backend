@@ -193,6 +193,95 @@ DROP COLUMN treatment_plan;
     ON DELETE CASCADE
     );*/
 
+/*CREATE TABLE appointments (
+    appointment_id SERIAL PRIMARY KEY,
+
+    patient_id INTEGER NOT NULL,
+    doctor_id INTEGER NOT NULL,
+
+    appointment_date TIMESTAMP NOT NULL,
+
+    status VARCHAR(20) DEFAULT 'UPCOMING',
+    reason VARCHAR(255),
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_patient
+        FOREIGN KEY(patient_id)
+        REFERENCES patients(patient_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_doctor
+        FOREIGN KEY(doctor_id)
+        REFERENCES doctors(doctor_id)
+        ON DELETE CASCADE
+);*/
+
+/*CREATE TABLE vitals (
+    vital_id SERIAL PRIMARY KEY,
+
+    patient_id INTEGER NOT NULL,
+
+    weight DECIMAL(5,2),
+    blood_pressure_systolic INTEGER,
+    blood_pressure_diastolic INTEGER,
+    blood_sugar INTEGER,
+
+    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_vitals_patient
+        FOREIGN KEY (patient_id)
+        REFERENCES patients(patient_id)
+        ON DELETE CASCADE
+);
+*/
+
+/*CREATE TABLE reminders (
+    reminder_id SERIAL PRIMARY KEY,
+
+    patient_id INTEGER NOT NULL,
+
+    title VARCHAR(100) NOT NULL,
+    description TEXT,
+
+    reminder_time TIMESTAMP NOT NULL,
+
+    status VARCHAR(20) DEFAULT 'PENDING',
+    -- PENDING | COMPLETED | CANCELLED
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_reminder_patient
+        FOREIGN KEY (patient_id)
+        REFERENCES patients(patient_id)
+        ON DELETE CASCADE
+);*/
+
+/*CREATE TABLE health_profiles (
+    profile_id SERIAL PRIMARY KEY,
+
+    patient_id INTEGER NOT NULL,
+
+    blood_group VARCHAR(5),
+
+    allergies TEXT,
+
+    has_disability BOOLEAN DEFAULT FALSE,
+    disability_details TEXT,
+
+    existing_diseases TEXT,
+
+    medical_history TEXT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_health_profile_patient
+        FOREIGN KEY (patient_id)
+        REFERENCES patients(patient_id)
+        ON DELETE CASCADE
+);*/
+
     
 
 
